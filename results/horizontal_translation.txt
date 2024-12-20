@@ -1,0 +1,17 @@
+Instructions:
+wanted_distance: 100 (mm)
+wanted_angle: 0 (rad)
+wanted_rotation: 0 (rad)
+wanted_speed: 100 (mm/s)
+wanted_rotational_speed: 0 (rad/s)
+
+Computed values:
+W0: -1 (rad/s) 	 =>V0: -57 (mm/s) 	 for 91 ticks.
+W1: 0 (rad/s) 	 =>V1: 0 (mm/s) 	 for 0 ticks.
+W2: 1 (rad/s) 	 =>V2: 57 (mm/s) 	 for 91 ticks.
+
+Verification:
+Robot translation speed: 100 (mm/s)
+Robot rotational speed: 0 (rad/s)
+--------------
+

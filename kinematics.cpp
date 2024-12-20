@@ -12,34 +12,49 @@ const double θ = 60*DEG_TO_RAD;
 const double a[3] = {0, 120*DEG_TO_RAD, 240*DEG_TO_RAD};
 
 //https://www.internationaljournalssrg.org/IJEEE/2019/Volume6-Issue12/IJEEE-V6I12P101.pdf
-std::pair<std::vector<double>, std::vector<double>> kinematics_matrix_time(double wanted_distance, double wanted_angle, double wanted_rotation, double wanted_speed);
+std::pair<std::vector<double>, std::vector<double>> kinematics(double wanted_distance, double wanted_angle, double wanted_rotation, double wanted_speed, double wanted_rotational_speed);
 
 int main()
 {
+    /// INSTRUCTIONS
     double wanted_distance = 100;
-    double wanted_angle = PI/2;
-    double wanted_rotation = 0;
-    double wanted_speed = 100;
+    double wanted_angle = PI/3;
+    double wanted_rotation = 2*PI;
+    double wanted_speed = 100; //m/s
+    double wanted_rotational_speed = 10; // rad/s 
+    std::cout << "Instructions:" << std::endl;
+    std::cout << "wanted_distance: " << wanted_distance << " (mm)" << std::endl;
+    std::cout << "wanted_angle: " << wanted_angle << " (rad)" << std::endl;
+    std::cout << "wanted_rotation: " << wanted_rotation << " (rad)" << std::endl;
+    std::cout << "wanted_speed: " << wanted_speed << " (mm/s)" << std::endl;
+    std::cout << "wanted_rotational_speed: " << wanted_rotational_speed << " (rad/s)" << std::endl;
+    std::cout << std::endl;
 
-    const auto [W, ticks] = kinematics_matrix_time(wanted_distance, wanted_angle, wanted_rotation, wanted_speed);
+    /// COMPUTATIONS
+    const auto [W, ticks] = kinematics(wanted_distance, wanted_angle, wanted_rotation, wanted_speed, wanted_rotational_speed);
+    std::cout << "Computed values:" << std::endl;
     std::vector<double> V;
     for(int i=0; i<3; ++i)
     {
         V.push_back(W[i]*r);
-        std::cout << "W" << i << ": " << W[i] << "\t=>V" << i << ": " << V[i] << std::endl;
+        std::cout << "W" << i << ": " << (int)W[i] << " (rad/s) \t =>V" << i << ": " << (int)V[i] << " (mm/s) \t for " << (int)ticks[i] << " ticks." << std::endl;
     }
+    std::cout << std::endl;
 
-    std::cout << "Verif:" << std::endl;
+    /// VERIFICATIONS
+    std::cout << "Verification:" << std::endl;
 
     double vx = V[0]*(-sin(θ)) + V[2]*(-sin(θ+a[2]));
     double vy = V[0]*cos(θ) - V[1] + V[2]*cos(θ+a[2]);
     double v = sqrt(vx*vx+vy*vy);
-    std::cout << "vx: " << vx << std::endl;
-    std::cout << "vy: " << vy << std::endl;
-    std::cout << "v: " << v << std::endl;
+    // std::cout << "vx: " << vx << std::endl;
+    // std::cout << "vy: " << vy << std::endl;
 
-    double rotation = R*(V[0]+V[1]+V[2]);
-    std::cout << "Rotation: " << rotation << std::endl;
+    std::cout << "Robot translation speed: " << v << " (mm/s)" << std::endl;
+
+    double rotation = (V[0]+V[1]+V[2])/R;
+    std::cout << "Robot rotational speed: " << rotation  << " (rad/s)" << std::endl;
+    std::cout << "--------------\n" << std::endl;
 }
 
 std::vector<double> dotProduct(const std::vector<std::vector<double>>& K, const std::vector<double>& U) {
@@ -66,10 +81,10 @@ std::vector<double> dotProduct(const std::vector<std::vector<double>>& K, const 
     return result;
 }
 
-std::pair<std::vector<double>, std::vector<double>>  kinematics_matrix_time(double wanted_distance, double wanted_angle, double wanted_rotation, double wanted_speed)
+std::pair<std::vector<double>, std::vector<double>>  kinematics(double wanted_distance, double wanted_angle, double wanted_rotation, double wanted_speed, double wanted_rotational_speed)
 {
     // The global robot mouvements
-    std::vector<double> U = {wanted_speed * cos(wanted_angle), wanted_speed * sin(wanted_angle), 0};//wanted_speed/R};
+    std::vector<double> U = {wanted_speed * cos(wanted_angle), wanted_speed * sin(wanted_angle), wanted_rotational_speed};
 
     // Computed using wolfram alpha
     std::vector<std::vector<double>> invK =
@@ -77,11 +92,6 @@ std::pair<std::vector<double>, std::vector<double>>  kinematics_matrix_time(doub
 
     // The wheel linear speeds V = invK * U
     std::vector<double> V = dotProduct(invK,U);
-    std::cout << "V (mm/s):  " << std::endl;
-    for(int i=0; i<3; ++i)
-    {
-        std::cout << "\t" << i << ": " << V[i] << std::endl;
-    }
 
     // Wheel rotational speed W = V/r
     std::vector<double> W = V;
@@ -91,17 +101,18 @@ std::pair<std::vector<double>, std::vector<double>>  kinematics_matrix_time(doub
     }
 
     // The number of ticks to rotate for each wheel
-    std::vector<double> ticks;
+    std::vector<double> ticks(3,0.0);
 
-    std::cout << "Ticks:  " << std::endl;
     for(int i=0; i<3; ++i)
     {
         // The wheel only participate in its plane, and simply drifts on the perpendicular direction
         // The distance that the wheel will travel is the combination of its rotation and drift
 
         // Portion of D in the rotation direction
-        ticks.push_back( std::abs(wanted_distance * sin (θ + a[i] - wanted_angle) * (double) 200 / (2 * PI * r)));
-        std::cout << "\t" << i << ": " << ticks[i] << std::endl;
+        // Portion due to translation
+        ticks[i] = std::abs(wanted_distance * sin (θ + a[i] - wanted_angle) * (double) 200 / (2 * PI * r));
+        // Portion due to rotation
+        ticks[i] += wanted_rotation * R / (r) * 200 / (2*PI);
     }
 
     return {W,ticks};   
