@@ -7,27 +7,31 @@ const double PI = 3.141592;
 const double DEG_TO_RAD = PI/180;
 const double r = 30;
 const double R = 116;
-
+const double TICKS_PER_ROTATION = 200;
 const double θ = 60*DEG_TO_RAD;
 const double a[3] = {0, 120*DEG_TO_RAD, 240*DEG_TO_RAD};
 
 //https://www.internationaljournalssrg.org/IJEEE/2019/Volume6-Issue12/IJEEE-V6I12P101.pdf
 std::pair<std::vector<double>, std::vector<double>> kinematics(double wanted_distance, double wanted_angle, double wanted_rotation, double wanted_speed, double wanted_rotational_speed);
 
-int main()
+int main(int argc, char* argv[])
 {
+    double wanted_distance, wanted_angle, wanted_rotation, wanted_speed, wanted_rotational_speed, MSTEP;
     /// INSTRUCTIONS
-    double wanted_distance = 100;
-    double wanted_angle = PI/3;
-    double wanted_rotation = 2*PI;
-    double wanted_speed = 100; //m/s
-    double wanted_rotational_speed = 10; // rad/s 
+    wanted_distance = (argc > 1) ? std::stod(argv[1]) : 0;
+    wanted_angle = (argc > 2) ? std::stod(argv[2]) : 0;
+    wanted_rotation = (argc > 3) ? std::stod(argv[3]) : 0;
+    wanted_speed = (argc > 4) ? std::stod(argv[4]) : 0;
+    wanted_rotational_speed = (argc > 5) ? std::stod(argv[5]) : 0;
+    MSTEP = (argc > 6) ? std::stod(argv[6]) : 1;
+
     std::cout << "Instructions:" << std::endl;
     std::cout << "wanted_distance: " << wanted_distance << " (mm)" << std::endl;
     std::cout << "wanted_angle: " << wanted_angle << " (rad)" << std::endl;
     std::cout << "wanted_rotation: " << wanted_rotation << " (rad)" << std::endl;
     std::cout << "wanted_speed: " << wanted_speed << " (mm/s)" << std::endl;
     std::cout << "wanted_rotational_speed: " << wanted_rotational_speed << " (rad/s)" << std::endl;
+    std::cout << "MSTEP: " << MSTEP << " " << std::endl;
     std::cout << std::endl;
 
     /// COMPUTATIONS
@@ -37,7 +41,11 @@ int main()
     for(int i=0; i<3; ++i)
     {
         V.push_back(W[i]*r);
-        std::cout << "W" << i << ": " << (int)W[i] << " (rad/s) \t =>V" << i << ": " << (int)V[i] << " (mm/s) \t for " << (int)ticks[i] << " ticks." << std::endl;
+        std::cout << "W" << i << ": " << W[i] << " (rad/s) \t =>V" << i << ": " << V[i] << " (mm/s) \t for " << ticks[i] << " ticks." << std::endl;
+        double Wrpm = W[i]*60/(2*PI);
+        std::cout << "=> W(rpm): " << Wrpm << " (rpm)" << std::endl;
+        std::cout << "=> speed: " << Wrpm*TICKS_PER_ROTATION*MSTEP/(2*PI*(double)30000) << " (to motor),  for " << ticks[i]*MSTEP << " ticks." << std::endl;
+        std::cout << std::endl;
     }
     std::cout << std::endl;
 
@@ -88,16 +96,16 @@ std::pair<std::vector<double>, std::vector<double>>  kinematics(double wanted_di
 
     // Computed using wolfram alpha
     std::vector<std::vector<double>> invK =
-    {{-1/sqrt(3), (double)1/3, R/3}, {0, -(double)2/3, R/3}, {1/sqrt(3), (double)1/3, R/3}};
+    {{-1/sqrt(3), (double)1/3, R/3}, {0, -(double)2/3, R/3}, {(double)1/sqrt(3), (double)1/3, R/3}};
 
     // The wheel linear speeds V = invK * U
     std::vector<double> V = dotProduct(invK,U);
 
     // Wheel rotational speed W = V/r
-    std::vector<double> W = V;
+    std::vector<double> W(3, 0.0);
     for(int i=0; i<3; i++)
     {
-        W[i]/=r;
+        W[i]=V[i]/r;
     }
 
     // The number of ticks to rotate for each wheel
@@ -108,11 +116,12 @@ std::pair<std::vector<double>, std::vector<double>>  kinematics(double wanted_di
         // The wheel only participate in its plane, and simply drifts on the perpendicular direction
         // The distance that the wheel will travel is the combination of its rotation and drift
 
-        // Portion of D in the rotation direction
+        // Portion of D in the wheel rotation direction
         // Portion due to translation
-        ticks[i] = std::abs(wanted_distance * sin (θ + a[i] - wanted_angle) * (double) 200 / (2 * PI * r));
+        ticks[i] = std::abs(wanted_distance * sin (θ + a[i] - wanted_angle) * TICKS_PER_ROTATION / (2 * PI * r));
+
         // Portion due to rotation
-        ticks[i] += wanted_rotation * R / (r) * 200 / (2*PI);
+        ticks[i] += wanted_rotation * R / (r) * TICKS_PER_ROTATION / (2*PI);
     }
 
     return {W,ticks};   
